@@ -21,7 +21,6 @@ const data = {
     account: null as AccountInfo | null,
     msalInstance: new PublicClientApplication(msalConfig),
     token: "",
-    isInitialized: false
 };
 
 export function useAuth() {

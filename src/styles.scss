@@ -1,1 +1,30 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Import ngx-toastr styles */
+@use 'ngx-toastr/toastr' as *;
+
+/* Bootstrap is imported via angular.json */
+
+/* Global Styles */
+html, body {
+  height: 100%;
+}
+
+/* Custom Scrollbar - Simple */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ced4da;
+}
