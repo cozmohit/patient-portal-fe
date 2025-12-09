@@ -1,0 +1,33 @@
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+.header {
+  height: 60px;
+  background-color: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+}
+
+.logo-image {
+  height: 40px; /* Fits comfortably within 60px header */
+  width: auto;
+  object-fit: contain;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background-color: #e9ecef;
+  font-size: 12px;
+}
+
+.btn-link {
+    text-decoration: none;
+    color: inherit;
+    &:hover {
+        color: #0d6efd;
+    }
+}

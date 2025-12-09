@@ -1,0 +1,46 @@
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
+.sidebar-nav {
+  padding: 16px 0;
+}
+
+.nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  margin-bottom: 4px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  color: #495057;
+  text-decoration: none;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  
+  &:hover {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+  }
+
+  &.active {
+    background-color: #e7f1ff;
+    color: #0d6efd;
+    border-left-color: #0d6efd;
+    font-weight: 500;
+  }
+}
+
+.nav-text {
+  margin-left: 12px;
+}
+
+.ms-auto {
+  margin-left: auto;
+}
+
