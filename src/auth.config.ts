@@ -1,28 +1,21 @@
-import { AccountInfo, PublicClientApplication, Configuration } from "@azure/msal-browser";
+import { Configuration } from "@azure/msal-browser";
 import { environment } from "./enviornments/enviornment";
-
 
 export const msalConfig: Configuration = {
     auth: {
         clientId: environment.adConfig.clientId,
-        authority: `https://login.microsoftonline.com/${environment.adConfig.tenantId}/v2.0`,
+        authority: `https://login.microsoftonline.com/${environment.adConfig.tenantId}`,
         redirectUri: window.location.origin,
         postLogoutRedirectUri: window.location.origin,
+        navigateToLoginRequestUrl: true,
     },
     cache: {
         cacheLocation: 'sessionStorage',
         storeAuthStateInCookie: false, 
     },
-    system: {
-    }
 };
 
-const data = {
-    account: null as AccountInfo | null,
-    msalInstance: new PublicClientApplication(msalConfig),
-    token: "",
+// API scopes for token acquisition
+export const loginRequest = {
+    scopes: [`api://${environment.adConfig.clientId}/api-access`],
 };
-
-export function useAuth() {
-    return data;
-}

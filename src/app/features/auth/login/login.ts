@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LoginService } from '../../../core/services/login.service';
-import { useAuth } from '../../../../auth.config';
 
 @Component({
   selector: 'app-login',
@@ -11,9 +10,8 @@ import { useAuth } from '../../../../auth.config';
 })
 export class Login {
   loginService = inject(LoginService);
-  readonly authConfig = useAuth();
 
-  async loginWithMicrosoft() {
+  loginWithMicrosoft(): void {
     this.loginService.loginWithMicrosoft();
   }
 }

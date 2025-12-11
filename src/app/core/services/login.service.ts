@@ -2,20 +2,36 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 import { MsalService } from '@azure/msal-angular';
-import { AuthenticationResult } from '@azure/msal-browser';
 import { ToastrService } from 'ngx-toastr';
 import { environment } from '../../../enviornments/enviornment';
+import { loginRequest } from '../../../auth.config';
+
+interface Role {
+  id: number;
+  name: string;
+}
+
+interface User {
+  id: number;
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  role: Role;
+}
 
 interface TokenResponse {
-  access: string;
-  refresh: string;
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
 }
 
 interface AzureTokenExchangeRequest {
-  access_token: string;
-  auth_method: 'azure';
+  azure_token: string;
 }
 
 @Injectable({
@@ -24,6 +40,9 @@ interface AzureTokenExchangeRequest {
 export class LoginService {
   private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
+  private readonly USER_EMAIL_KEY = 'user_email';
+  private readonly USER_ROLE_KEY = 'user_role';
+  private readonly USER_FIRST_NAME_KEY = 'user_first_name';
   
   private msalService = inject(MsalService);
   private http = inject(HttpClient);
@@ -32,6 +51,8 @@ export class LoginService {
   
   isAuthenticatingWithMicrosoft = signal<boolean>(false);
 
+  private baseUrl = `${environment.apiUrl}/users/auth`;
+
   /**
    * Trigger Microsoft Login using Redirect Flow
    */
@@ -39,17 +60,15 @@ export class LoginService {
     try {
       const msalInstance = this.msalService.instance;
       
-      // Ensure MSAL instance is initialized before calling any methods
-      if (!(msalInstance as any).initialized) {
-        await msalInstance.initialize();
-      }
+      // Ensure MSAL instance is initialized
+      await msalInstance.initialize();
       
-      const account = msalInstance.getActiveAccount();
       this.isAuthenticatingWithMicrosoft.set(true);
+      console.log('Initiating Microsoft login redirect...');
       
-      this.msalService.loginRedirect({
-        scopes: ['openid', 'profile', 'email'],
-        account: account ?? undefined,
+      // Use loginRedirect - this will navigate away from the app
+      await msalInstance.loginRedirect({
+        scopes: loginRequest.scopes,
       });
     } catch (error) {
       this.isAuthenticatingWithMicrosoft.set(false);
@@ -58,46 +77,45 @@ export class LoginService {
     }
   }
 
-  //Handle successful Azure login and exchange token with backend
-  handleAzureLoginSuccess(authResult: AuthenticationResult): void {
-    try {
-      this.msalService.instance.setActiveAccount(authResult.account);
-      localStorage.setItem('auth_method', 'azure');
-      
-      this.isAuthenticatingWithMicrosoft.set(true);
-
-      // Exchange Azure token for backend JWT
-      this.exchangeAzureToken(authResult.accessToken).subscribe({
-        next: (backendTokens) => {
-          this.storeTokens(backendTokens);
-          console.log('Backend tokens:', backendTokens);
-          this.toastr.success('Successfully logged in!', 'Welcome');
-          this.router.navigate(['/dashboard']);
-          this.isAuthenticatingWithMicrosoft.set(false);
-        },
-        error: (error) => {
-          console.error('Azure token exchange failed:', error);
-          this.toastr.error('Failed to authenticate with backend', 'Authentication Error');
-          this.isAuthenticatingWithMicrosoft.set(false);
-          this.logout();
-        },
-      });
-    } catch (error) {
-      console.error('Error handling Azure login:', error);
-      this.toastr.error('An error occurred during authentication', 'Authentication Error');
-      this.isAuthenticatingWithMicrosoft.set(false);
-    }
+  /**
+   * Exchange Azure token with backend and complete login
+   */
+  exchangeTokenAndLogin(azureAccessToken: string): void {
+    this.isAuthenticatingWithMicrosoft.set(true);
+    console.log('Exchanging token with backend...');
+    
+    this.exchangeAzureToken(azureAccessToken).subscribe({
+      next: (response) => {
+        console.log('Backend token exchange successful');
+        this.storeTokens(response);
+        localStorage.setItem('auth_method', 'azure');
+        
+        const userName = `${response.user.first_name} ${response.user.last_name}`;
+        this.toastr.success(`Welcome back, ${userName}!`, 'Login Successful');
+        
+        // Navigate to dashboard
+        this.router.navigate(['/dashboard']);
+        this.isAuthenticatingWithMicrosoft.set(false);
+      },
+      error: (error) => {
+        console.error('Azure token exchange failed:', error);
+        this.toastr.error('Failed to authenticate with backend', 'Authentication Error');
+        this.isAuthenticatingWithMicrosoft.set(false);
+        this.logout();
+      },
+    });
   }
 
- //Exchange Azure token with backend
+  /**
+   * Exchange Azure token with backend
+   */
   private exchangeAzureToken(azureToken: string): Observable<TokenResponse> {
     const payload: AzureTokenExchangeRequest = {
-      access_token: azureToken,
-      auth_method: 'azure',
+      azure_token: azureToken,
     };
 
     return this.http
-      .post<TokenResponse>(`${environment.apiUrl}/validate-azure-token/`, payload)
+      .post<TokenResponse>(`${this.baseUrl}/login/`, payload)
       .pipe(
         catchError((error: HttpErrorResponse) => {
           let errorMessage = 'Backend token exchange failed';
@@ -118,31 +136,62 @@ export class LoginService {
       );
   }
 
-  //Check if user is authenticated
+ // Check if user is authenticated
   isAuthenticated(): boolean {
     const token = this.getAccessToken();
     return !!token && !this.isTokenExpired(token);
   }
 
-  //Get access token from localStorage
+  // Get access token from sessionStorage
   getAccessToken(): string {
-    return localStorage.getItem(this.ACCESS_TOKEN_KEY) || '';
+    return sessionStorage.getItem(this.ACCESS_TOKEN_KEY) || '';
   }
 
-  //Get refresh token from localStorage
+  // Get refresh token from localStorage
   getRefreshToken(): string {
     return localStorage.getItem(this.REFRESH_TOKEN_KEY) || '';
   }
 
-  //Store tokens in localStorage
-  private storeTokens(tokens: TokenResponse): void {
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, tokens.access);
-    if (tokens.refresh) {
-      localStorage.setItem(this.REFRESH_TOKEN_KEY, tokens.refresh);
+  // Store tokens and user data
+  private storeTokens(response: TokenResponse): void {
+    // Store access token in sessionStorage
+    sessionStorage.setItem(this.ACCESS_TOKEN_KEY, response.access_token);
+    
+    // Store refresh token in localStorage
+    if (response.refresh_token) {
+      localStorage.setItem(this.REFRESH_TOKEN_KEY, response.refresh_token);
     }
+    
+    // Store user data in localStorage
+    localStorage.setItem(this.USER_EMAIL_KEY, response.user.email);
+    localStorage.setItem(this.USER_ROLE_KEY, response.user.role.name);
+    localStorage.setItem(this.USER_FIRST_NAME_KEY, response.user.first_name);
+   
   }
 
-  //Check if JWT token is expired
+  // Get user email from localStorage
+  getUserEmail(): string {
+    return localStorage.getItem(this.USER_EMAIL_KEY) || '';
+  }
+
+  // Get user role from localStorage
+  getUserRole(): string {
+    return localStorage.getItem(this.USER_ROLE_KEY) || '';
+  }
+
+  // Get user first name from localStorage
+  getUserFirstName(): string {
+    return localStorage.getItem(this.USER_FIRST_NAME_KEY) || '';
+    
+  }
+
+  // Get user initials for avatar
+  getUserInitials(): string {
+    const firstName = this.getUserFirstName();
+    return firstName ? firstName.charAt(0).toUpperCase() : 'U';
+  }
+
+  // Check if JWT token is expired
   private isTokenExpired(token: string): boolean {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
@@ -154,24 +203,29 @@ export class LoginService {
     }
   }
 
-  //Logout user and clear tokens
+  // Logout user and clear tokens
   async logout(): Promise<void> {
     try {
-      localStorage.removeItem(this.ACCESS_TOKEN_KEY);
+      // Clear sessionStorage
+      sessionStorage.removeItem(this.ACCESS_TOKEN_KEY);
+      
+      // Clear localStorage
       localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+      localStorage.removeItem(this.USER_EMAIL_KEY);
+      localStorage.removeItem(this.USER_ROLE_KEY);
+      localStorage.removeItem(this.USER_FIRST_NAME_KEY);
       localStorage.removeItem('auth_method');
       
       const msalInstance = this.msalService.instance;
       
-      // Ensure MSAL instance is initialized before calling any methods
-      if (!(msalInstance as any).initialized) {
-        await msalInstance.initialize();
-      }
+      // Ensure MSAL instance is initialized
+      await msalInstance.initialize();
       
       const account = msalInstance.getActiveAccount();
       if (account) {
-        this.msalService.logoutRedirect({
+        await msalInstance.logoutRedirect({
           account: account,
+          postLogoutRedirectUri: window.location.origin,
         });
       } else {
         this.router.navigate(['/login']);
@@ -184,4 +238,3 @@ export class LoginService {
     }
   }
 }
-

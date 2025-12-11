@@ -1,0 +1,214 @@
+<div class="container-fluid p-4">
+  <h2 class="mb-4">Users</h2>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <!-- Search Bar and Action Buttons -->
+      <div class="row mb-3 align-items-center">
+        <div class="col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0">
+              <i class="bi bi-search"></i>
+            </span>
+            <input 
+              type="text" 
+              class="form-control border-start-0" 
+              placeholder="Search" 
+              [(ngModel)]="searchTerm"
+            />
+          </div>
+        </div>
+        <div class="col-md-8 text-end">
+          <button class="btn btn-outline-primary me-2" (click)="onRefresh()" title="Refresh">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <!-- <button class="btn btn-outline-primary me-2" title="Table View">
+            <i class="bi bi-table"></i>
+          </button>
+          <button class="btn btn-outline-primary me-2" title="Download">
+            <i class="bi bi-download"></i>
+          </button> -->
+          <button class="btn btn-primary" title="Add User" (click)="openAddUserModal()">
+            Add User
+          </button>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">
+                Actions
+              </th>
+              <th scope="col">
+                Email
+                <i class="bi bi-funnel ms-2"></i>
+              </th>
+              <th scope="col">
+                First Name
+                <i class="bi bi-funnel ms-2"></i>
+              </th>
+              <th scope="col">
+                Last Name
+                <i class="bi bi-funnel ms-2"></i>
+              </th>
+              <th scope="col">
+                Phone Number
+                <i class="bi bi-funnel ms-2"></i>
+              </th>
+              <th scope="col">
+                Role
+                <i class="bi bi-funnel ms-2"></i>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="isLoading">
+              <td colspan="6" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!isLoading && users.length === 0">
+              <td colspan="6" class="text-center py-4 text-muted">
+                No users found
+              </td>
+            </tr>
+            <tr *ngFor="let user of users">
+              <td>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-primary" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.first_name }}</td>
+              <td>{{ user.last_name }}</td>
+              <td>{{ user.phone_number }}</td>
+              <td>{{ getRoleName(user.role_id) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <app-pagination-component
+        [currentPage]="currentPage"
+        [pageSize]="pageSize"
+        [totalRecords]="totalRecords"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      />
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" [class.show]="showModal" [style.display]="showModal ? 'block' : 'none'" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add User</h5>
+        <button type="button" class="btn-close" (click)="closeModal()" [disabled]="isSubmitting"></button>
+      </div>
+      <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <!-- Email -->
+          <div class="mb-3">
+            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+            <input 
+              type="email" 
+              class="form-control" 
+              id="email" 
+              formControlName="email"
+              [class.is-invalid]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
+            />
+            <div class="invalid-feedback" *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched">
+              <span *ngIf="userForm.get('email')?.errors?.['required']">Email is required</span>
+              <span *ngIf="userForm.get('email')?.errors?.['email']">Please enter a valid email</span>
+            </div>
+          </div>
+
+          <!-- First Name -->
+          <div class="mb-3">
+            <label for="firstName" class="form-label">First Name <span class="text-danger">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="firstName" 
+              formControlName="first_name"
+              [class.is-invalid]="userForm.get('first_name')?.invalid && userForm.get('first_name')?.touched"
+            />
+            <div class="invalid-feedback" *ngIf="userForm.get('first_name')?.invalid && userForm.get('first_name')?.touched">
+              First name is required
+            </div>
+          </div>
+
+          <!-- Last Name -->
+          <div class="mb-3">
+            <label for="lastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="lastName" 
+              formControlName="last_name"
+              [class.is-invalid]="userForm.get('last_name')?.invalid && userForm.get('last_name')?.touched"
+            />
+            <div class="invalid-feedback" *ngIf="userForm.get('last_name')?.invalid && userForm.get('last_name')?.touched">
+              Last name is required
+            </div>
+          </div>
+
+          <!-- Role -->
+          <div class="mb-3">
+            <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+            <select 
+              class="form-select" 
+              id="role" 
+              formControlName="role_id"
+              [class.is-invalid]="userForm.get('role_id')?.invalid && userForm.get('role_id')?.touched"
+            >
+              <option [ngValue]="null" disabled selected>Select a role</option>
+              <option *ngFor="let role of roles" [ngValue]="role.id">{{ role.name }}</option>
+            </select>
+            <div class="invalid-feedback" *ngIf="userForm.get('role_id')?.invalid && userForm.get('role_id')?.touched">
+              Role is required
+            </div>
+          </div>
+
+          <!-- Phone Number -->
+          <div class="mb-3">
+            <label for="phoneNumber" class="form-label">Phone Number <span class="text-danger">*</span></label>
+            <input 
+              type="tel" 
+              class="form-control" 
+              id="phoneNumber" 
+              formControlName="phone_number"
+              [class.is-invalid]="userForm.get('phone_number')?.invalid && userForm.get('phone_number')?.touched"
+            />
+            <div class="invalid-feedback" *ngIf="userForm.get('phone_number')?.invalid && userForm.get('phone_number')?.touched">
+              Phone number is required
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="isSubmitting">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status"></span>
+            {{ isSubmitting ? 'Creating...' : 'Create User' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showModal" *ngIf="showModal"></div>

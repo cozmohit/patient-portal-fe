@@ -13,6 +13,7 @@ export class AuthInterceptor implements HttpInterceptor {
   intercept(req: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     // Skip auth header for authentication endpoints
     if (
+      req.url.includes('/auth/login') ||
       req.url.includes('/token/') || 
       req.url.includes('/validate-azure-token/') ||
       req.url.includes('/refresh/')

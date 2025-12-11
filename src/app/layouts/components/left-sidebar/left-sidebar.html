@@ -2,13 +2,30 @@
   <ul class="nav-list">
     @for (item of menuItems; track item.label) {
       <li class="nav-item">
-        <a [routerLink]="item.route" routerLinkActive="active" class="nav-link">
-          <i [class]="item.icon"></i>
-          <span class="nav-text">{{ item.label }}</span>
-          @if (item.label === 'Master Data') {
-            <i class="bi bi-chevron-right ms-auto"></i>
+        @if (item.children) {
+          <a (click)="toggleMenu(item.label)" class="nav-link" [class.active]="expandedMenu === item.label">
+            <i [class]="item.icon"></i>
+            <span class="nav-text">{{ item.label }}</span>
+            <i [class]="expandedMenu === item.label ? 'bi bi-chevron-down ms-auto' : 'bi bi-chevron-right ms-auto'"></i>
+          </a>
+          @if (expandedMenu === item.label) {
+            <ul class="submenu">
+              @for (child of item.children; track child.label) {
+                <li class="submenu-item">
+                  <a [routerLink]="child.route" routerLinkActive="active" class="nav-link submenu-link">
+                    <i [class]="child.icon"></i>
+                    <span class="nav-text">{{ child.label }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
           }
-        </a>
+        } @else {
+          <a [routerLink]="item.route" routerLinkActive="active" class="nav-link">
+            <i [class]="item.icon"></i>
+            <span class="nav-text">{{ item.label }}</span>
+          </a>
+        }
       </li>
     }
   </ul>
